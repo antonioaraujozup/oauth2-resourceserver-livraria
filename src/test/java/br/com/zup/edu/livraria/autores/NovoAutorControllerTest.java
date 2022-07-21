@@ -11,6 +11,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class NovoAutorControllerTest extends SpringBootIntegrationTest {
 
+    private static final String SCOPE = "SCOPE_autores:write";
+
     @Autowired
     private AutorRepository repository;
 
@@ -25,7 +27,7 @@ class NovoAutorControllerTest extends SpringBootIntegrationTest {
         NovoAutorRequest novoAutor = new NovoAutorRequest("Alberto", "alberto.souza@zup.com.br", "CTO");
 
         // ação
-        mockMvc.perform(POST("/api/autores", novoAutor))
+        mockMvc.perform(POST("/api/autores", novoAutor, criaAccessToken(), SCOPE))
                 .andExpect(status().isCreated())
                 .andExpect(redirectedUrlPattern("**/api/autores/*"))
         ;
@@ -40,7 +42,7 @@ class NovoAutorControllerTest extends SpringBootIntegrationTest {
         NovoAutorRequest autorInvalido = new NovoAutorRequest("", "", "");
 
         // ação
-        mockMvc.perform(POST("/api/autores", autorInvalido))
+        mockMvc.perform(POST("/api/autores", autorInvalido, criaAccessToken(), SCOPE))
                 .andExpect(status().isBadRequest())
         ;
 
@@ -57,13 +59,42 @@ class NovoAutorControllerTest extends SpringBootIntegrationTest {
         NovoAutorRequest autorInvalido = new NovoAutorRequest("outro nome", existente.getEmail(), "outra descricao");
 
         // ação
-        mockMvc.perform(POST("/api/autores", autorInvalido))
+        mockMvc.perform(POST("/api/autores", autorInvalido, criaAccessToken(), SCOPE))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(status().reason("autor com este email já existente"))
         ;
 
         // validação
         assertEquals(1, repository.count(), "total de autores");
+    }
+
+
+    @Test
+    public void naoDeveCadastrarNovoAutorQuandoAccessTokenNaoEnviado() throws Exception {
+        // cenário
+        NovoAutorRequest novoAutor = new NovoAutorRequest("Alberto", "alberto.souza@zup.com.br", "CTO");
+
+        // ação
+        mockMvc.perform(POST("/api/autores", novoAutor))
+                .andExpect(status().isUnauthorized())
+        ;
+
+        // validação
+        assertEquals(0, repository.count(), "total de autores");
+    }
+
+    @Test
+    public void naoDeveCadastrarNovoAutorQuandoAccessTokenNaoPossuiScopeApropriado() throws Exception {
+        // cenário
+        NovoAutorRequest novoAutor = new NovoAutorRequest("Alberto", "alberto.souza@zup.com.br", "CTO");
+
+        // ação
+        mockMvc.perform(POST("/api/autores", novoAutor, criaAccessToken()))
+                .andExpect(status().isForbidden())
+        ;
+
+        // validação
+        assertEquals(0, repository.count(), "total de autores");
     }
 
 }

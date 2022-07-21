@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class RemoveAutorControllerTest extends SpringBootIntegrationTest {
 
+    private static final String SCOPE = "SCOPE_autores:write";
+
     @Autowired
     private AutorRepository repository;
 
@@ -25,12 +27,12 @@ class RemoveAutorControllerTest extends SpringBootIntegrationTest {
         repository.save(autor);
 
         // ação
-        mockMvc.perform(DELETE("/api/autores/{id}", autor.getId()))
+        mockMvc.perform(DELETE("/api/autores/{id}", criaAccessToken(), SCOPE, autor.getId()))
                 .andExpect(status().isNoContent())
         ;
 
         // validação
-        assertEquals(0, repository.count(), "total de albuns");
+        assertEquals(0, repository.count(), "total de autores");
     }
 
     @Test
@@ -40,13 +42,43 @@ class RemoveAutorControllerTest extends SpringBootIntegrationTest {
         repository.save(autor);
 
         // ação
-        mockMvc.perform(DELETE("/api/autores/{id}", -99999))
+        mockMvc.perform(DELETE("/api/autores/{id}", criaAccessToken(), SCOPE, -99999))
                 .andExpect(status().isNotFound())
                 .andExpect(status().reason("autor não encontrado"))
         ;
 
         // validação
-        assertEquals(1, repository.count(), "total de albuns");
+        assertEquals(1, repository.count(), "total de autores");
+    }
+
+    @Test
+    public void naoDeveRemoverAutorExistenteQuandoAccessTokenNaoEnviado() throws Exception {
+        // cenário
+        Autor autor = new Autor("Rafael","rafael.ponte@zup.com.br", "dev cansado");
+        repository.save(autor);
+
+        // ação
+        mockMvc.perform(DELETE("/api/autores/{id}", autor.getId()))
+                .andExpect(status().isUnauthorized())
+        ;
+
+        // validação
+        assertEquals(1, repository.count(), "total de autores");
+    }
+
+    @Test
+    public void naoDeveRemoverAutorExistenteQuandoAccessTokenNaoPossuiScopeApropriado() throws Exception {
+        // cenário
+        Autor autor = new Autor("Rafael","rafael.ponte@zup.com.br", "dev cansado");
+        repository.save(autor);
+
+        // ação
+        mockMvc.perform(DELETE("/api/autores/{id}", criaAccessToken(), autor.getId()))
+                .andExpect(status().isForbidden())
+        ;
+
+        // validação
+        assertEquals(1, repository.count(), "total de autores");
     }
 
 }

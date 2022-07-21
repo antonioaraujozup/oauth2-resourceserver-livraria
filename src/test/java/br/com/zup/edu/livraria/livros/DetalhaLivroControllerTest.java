@@ -14,6 +14,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class DetalhaLivroControllerTest extends SpringBootIntegrationTest {
 
+    private static final String SCOPE = "SCOPE_livros:read";
+
     @Autowired
     private LivroRepository repository;
     @Autowired
@@ -38,7 +40,7 @@ class DetalhaLivroControllerTest extends SpringBootIntegrationTest {
         repository.save(existente);
 
         // ação e validação
-        mockMvc.perform(GET("/api/livros/{id}", existente.getId()))
+        mockMvc.perform(GET("/api/livros/{id}", criaAccessToken(), SCOPE, existente.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(existente.getId()))
                 .andExpect(jsonPath("$.nome").value(existente.getNome()))
@@ -58,9 +60,37 @@ class DetalhaLivroControllerTest extends SpringBootIntegrationTest {
         repository.save(existente);
 
         // ação e validação
-        mockMvc.perform(GET("/api/livros/{id}", -99999))
+        mockMvc.perform(GET("/api/livros/{id}", criaAccessToken(), SCOPE, -99999))
                 .andExpect(status().isNotFound())
                 .andExpect(status().reason("livro não encontrado"))
+        ;
+    }
+
+    @Test
+    public void naoDeveDetalharLivroExistenteQuandoAccessTokenNaoEnviado() throws Exception {
+
+        // cenário
+        Livro existente = new Livro("Spring Security",
+                "Sobre Spring Security", "978-0-4703-2225-3", AUTOR, LocalDate.now());
+        repository.save(existente);
+
+        // ação e validação
+        mockMvc.perform(GET("/api/livros/{id}", existente.getId()))
+                .andExpect(status().isUnauthorized())
+        ;
+    }
+
+    @Test
+    public void naoDeveDetalharLivroExistenteQuandoAccessTokenNaoPossuiScopeApropriado() throws Exception {
+
+        // cenário
+        Livro existente = new Livro("Spring Security",
+                "Sobre Spring Security", "978-0-4703-2225-3", AUTOR, LocalDate.now());
+        repository.save(existente);
+
+        // ação e validação
+        mockMvc.perform(GET("/api/livros/{id}", criaAccessToken(), existente.getId()))
+                .andExpect(status().isForbidden())
         ;
     }
 

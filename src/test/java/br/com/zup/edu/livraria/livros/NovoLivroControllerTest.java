@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class NovoLivroControllerTest extends SpringBootIntegrationTest {
 
+    private static final String SCOPE = "SCOPE_livros:write";
+
     @Autowired
     private LivroRepository repository;
     @Autowired
@@ -37,7 +39,7 @@ class NovoLivroControllerTest extends SpringBootIntegrationTest {
                 "Sobre arquitetura java", "978-0-4703-2225-3", AUTOR.getId(), LocalDate.now());
 
         // ação
-        mockMvc.perform(POST("/api/livros", novoLivro))
+        mockMvc.perform(POST("/api/livros", novoLivro, criaAccessToken(), SCOPE))
                 .andExpect(status().isCreated())
                 .andExpect(redirectedUrlPattern("**/api/livros/*"))
         ;
@@ -47,12 +49,12 @@ class NovoLivroControllerTest extends SpringBootIntegrationTest {
     }
 
     @Test
-    public void deveCadastrarNovoLivro_quandoParametrosInvalidos() throws Exception {
+    public void naoDeveCadastrarNovoLivro_quandoParametrosInvalidos() throws Exception {
         // cenário
         NovoLivroRequest livroInvalido = new NovoLivroRequest("", "", "", null, null);
 
         // ação
-        mockMvc.perform(POST("/api/livros", livroInvalido))
+        mockMvc.perform(POST("/api/livros", livroInvalido, criaAccessToken(), SCOPE))
                 .andExpect(status().isBadRequest())
         ;
 
@@ -61,7 +63,7 @@ class NovoLivroControllerTest extends SpringBootIntegrationTest {
     }
 
     @Test
-    public void deveCadastrarNovoLivro_quandoLivroJaExistente() throws Exception {
+    public void naoDeveCadastrarNovoLivro_quandoLivroJaExistente() throws Exception {
         // cenário
         Livro existente = new Livro("Spring Security", "Sobre Spring Security",
                         "978-0-4703-2225-3", AUTOR, LocalDate.now());
@@ -71,12 +73,42 @@ class NovoLivroControllerTest extends SpringBootIntegrationTest {
                             existente.getIsbn(), AUTOR.getId(), LocalDate.now());
 
         // ação
-        mockMvc.perform(POST("/api/livros", livroInvalido))
+        mockMvc.perform(POST("/api/livros", livroInvalido, criaAccessToken(), SCOPE))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(status().reason("livro com este ISBN já existente"))
         ;
 
         // validação
         assertEquals(1, repository.count(), "total de livros");
+    }
+
+    @Test
+    public void naoDeveCadastrarNovoLivroQuandoAccessTokenNaoEnviado() throws Exception {
+        // cenário
+        NovoLivroRequest novoLivro = new NovoLivroRequest("Arquitetura Java",
+                "Sobre arquitetura java", "978-0-4703-2225-3", AUTOR.getId(), LocalDate.now());
+
+        // ação
+        mockMvc.perform(POST("/api/livros", novoLivro))
+                .andExpect(status().isUnauthorized())
+        ;
+
+        // validação
+        assertEquals(0, repository.count(), "total de livros");
+    }
+
+    @Test
+    public void naoDeveCadastrarNovoLivroQuandoAccessTokenNaoPossuiScopeApropriado() throws Exception {
+        // cenário
+        NovoLivroRequest novoLivro = new NovoLivroRequest("Arquitetura Java",
+                "Sobre arquitetura java", "978-0-4703-2225-3", AUTOR.getId(), LocalDate.now());
+
+        // ação
+        mockMvc.perform(POST("/api/livros", novoLivro, criaAccessToken()))
+                .andExpect(status().isForbidden())
+        ;
+
+        // validação
+        assertEquals(0, repository.count(), "total de livros");
     }
 }
