@@ -42,5 +42,5 @@ spring:
         oauth2:
             resourceserver:
                 jwt:
-                    issuer-uri:  http://localhost:18080/auth/realms/livraria
-                    jwk-set-uri: http://localhost:18080/auth/realms/livraria/protocol/openid-connect/certs
+                    issuer-uri:  http://localhost:18080/realms/livraria
+                    jwk-set-uri: http://localhost:18080/realms/livraria/protocol/openid-connect/certs
